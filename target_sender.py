@@ -85,8 +85,8 @@ def estimate_target_gps_from_bbox(bbox, drone_gps, frame_width, frame_height):
     )
 
     return {
-        "lat": lat,
-        "lng": lng,
+        "lat": round(lat, 6),
+        "lng": round(lng, 6),
         "alt": 0.0
     }
 
@@ -122,10 +122,8 @@ def build_targets(result: dict):
         )
 
         targets.append({
-            "eventIndex": idx,
             "eventClass": event_class,
-            "score": score,
-            "bbox": bbox,
+            "score": round(score, 2) if score is not None else None,
             "targetGps": target_gps,
         })
 
@@ -146,17 +144,6 @@ def build_target_payload(result: dict) -> dict:
     }
 
 
-def format_target_summary(targets: list) -> str:
-    lines = []
-    for idx, target in enumerate(targets, start=1):
-        gps = target.get("targetGps", {})
-        lines.append(
-            f"#{idx} {target.get('eventClass')} {target.get('score'):.2f} "
-            f"→ {gps.get('lat'):.6f},{gps.get('lng'):.6f}"
-        )
-    return "\n".join(lines)
-
-
 def send_target_from_result(result: dict) -> str:
     url = config.BASE_URL + config.TARGET_LOCATION_ENDPOINT
 
@@ -173,7 +160,7 @@ def send_target_from_result(result: dict) -> str:
 
         log_block(
             f"TARGET ▶ REQUEST ({len(payload['targets'])} targets)",
-            format_target_summary(payload["targets"])
+            pretty_json(payload)
         )
 
         response = requests.post(

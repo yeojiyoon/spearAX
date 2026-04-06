@@ -1,4 +1,7 @@
-/__pycache__
-/failed_frames
-/logs
-/responses
+build/
+dist/
+responses/
+failed_frames/
+logs/
+__pycache__/
+*.pyc
