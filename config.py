@@ -11,7 +11,7 @@ CAPTURE_INTERVAL_SECONDS = 10
 # ===== 웹캠 설정 =====
 WEBCAM_INDEX = 0
 
-# ===== MAVLink 설정 (🔥 추가 추천) =====
+# ===== MAVLink 설정 =====
 MAVLINK_CONNECTION = "udp:127.0.0.1:14550"
 
 # ===== 경로 설정 =====
@@ -26,7 +26,18 @@ SAVE_FAILED_FRAMES = True
 # ===== 드론 정보 =====
 DRONE_OID = "drone-test"
 
-# 🔥 fallback용 (GPS 못 받을 때만 사용)
+# ===== 대략적 타겟 GPS 계산용 =====
+APPROX_TARGET_GPS_ENABLED = True
+
+# 카메라가 지면을 내려다본다고 아주 단순 가정했을 때,
+# 고도 100m에서 화면 전체가 대략 몇 m를 커버하는지에 대한 러프 스케일
+GROUND_WIDTH_METERS_AT_100M = 120.0
+GROUND_HEIGHT_METERS_AT_100M = 90.0
+
+# GPS 없을 때 fallback
+USE_FALLBACK_DRONE_GPS = True
+
+# fallback용 (GPS 못 받을 때만 사용)
 DRONE_GPS = {
     "lat": 35.8714,
     "lng": 128.6014,

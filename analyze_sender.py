@@ -14,6 +14,17 @@ from gps_receiver import get_current_gps
 logger = logging.getLogger("drone_pipeline")
 
 
+def pretty_json(data) -> str:
+    return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+def log_block(title: str, body: str = ""):
+    if body:
+        logger.info("%s\n%s", title, body)
+    else:
+        logger.info("%s", title)
+
+
 def encode_frame_to_base64(frame) -> str:
     success, buffer = cv2.imencode(".jpg", frame)
     if not success:
@@ -31,7 +42,7 @@ def build_analyze_payload_from_frame(frame) -> dict:
     gps_data = get_current_gps()
     if gps_data is None:
         gps_data = config.DRONE_GPS
-        logger.warning("[GPS] fallback GPS 사용")
+        logger.warning("[GPS] 실시간 GPS 없음 → fallback GPS 사용: %s", gps_data)
 
     return {
         "droneOid": config.DRONE_OID,
@@ -58,7 +69,13 @@ def send_analyze_frame(frame, frame_name: str = "webcam_capture") -> Optional[di
     try:
         payload = build_analyze_payload_from_frame(frame)
 
-        logger.info("[ANALYZE SEND] frame=%s | gps=%s", frame_name, payload["gps"])
+        payload_for_log = dict(payload)
+        payload_for_log["image"] = f"<base64 length={len(payload['image'])}>"
+
+        log_block(
+            "ANALYZE ▶ REQUEST",
+            f"POST {url}\n{pretty_json(payload_for_log)}"
+        )
 
         response = requests.post(
             url,
@@ -69,20 +86,35 @@ def send_analyze_frame(frame, frame_name: str = "webcam_capture") -> Optional[di
 
         result = response.json()
 
+        log_block(
+            f"ANALYZE ◀ RESPONSE ({response.status_code})",
+            pretty_json(result)
+        )
+
+        confirmed_events = result.get("confirmedEvents", [])
         logger.info(
-            "[ANALYZE SUCCESS] frame=%s | isSmoke=%s | confidence=%s | analysisOid=%s",
-            frame_name,
+            "ANALYZE PARSED | analysisOid=%s | isSmoke=%s | confidence=%s | confirmedEvents=%d",
+            result.get("analysisOid"),
             result.get("isSmoke"),
             result.get("confidence"),
-            result.get("analysisOid"),
+            len(confirmed_events),
         )
+
+        for idx, event in enumerate(confirmed_events, start=1):
+            logger.info(
+                "  #%d %s %.6f | bbox_tlwh=%s",
+                idx,
+                event.get("final_event_class"),
+                event.get("final_event_score", 0.0),
+                event.get("bbox_tlwh"),
+            )
 
         if getattr(config, "SAVE_RESPONSE_JSON", True):
             path = save_response_json(frame_name, result)
-            logger.info("응답 JSON 저장: %s", path)
+            logger.info("ANALYZE SAVE | %s", path)
 
         return result
 
     except Exception as e:
-        logger.error("[ANALYZE ERROR] %s", e)
+        log_block("ANALYZE ◀ ERROR", str(e))
         return None
